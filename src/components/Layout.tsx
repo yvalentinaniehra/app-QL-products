@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useStore } from "../hooks/useStore";
 import { Toast } from "./UIComponents";
 import { SubscriptionFormModal } from "./SubscriptionFormModal";
+import { isSupabaseConfigured } from "../services/supabaseClient";
+import type { AuthUser } from "../services/authService";
 import { 
   LayoutDashboard, 
   Layers, 
@@ -12,7 +14,10 @@ import {
   Moon, 
   Menu, 
   X, 
-  PlusCircle
+  PlusCircle,
+  Cloud,
+  HardDrive,
+  LogOut
 } from "lucide-react";
 import { formatDateDisplay } from "../utils/date";
 
@@ -20,12 +25,16 @@ interface LayoutProps {
   children: React.ReactNode;
   currentPage: string;
   setCurrentPage: (page: string) => void;
+  currentUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
   children, 
   currentPage, 
-  setCurrentPage 
+  setCurrentPage,
+  currentUser,
+  onLogout
 }) => {
   const { toast, hideToast } = useStore();
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -120,26 +129,62 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         {/* Footer Sidebar */}
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/50 space-y-3">
+          {/* DB Mode Badge */}
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-semibold w-full ${
+              isSupabaseConfigured
+                ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50"
+                : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50"
+            }`}
+            title={isSupabaseConfigured ? "Đang dùng Supabase Cloud Database" : "Đang dùng LocalStorage (Offline)"}
+          >
+            {isSupabaseConfigured ? (
+              <Cloud className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <HardDrive className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span>{isSupabaseConfigured ? "Online · Supabase" : "Offline · Local"}</span>
+            <span className={`ml-auto h-1.5 w-1.5 rounded-full animate-pulse ${
+              isSupabaseConfigured ? "bg-emerald-500" : "bg-amber-500"
+            }`} />
+          </div>
+
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-gray-800 flex items-center justify-center font-semibold text-xs text-indigo-600 dark:text-indigo-400">
-                AD
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-semibold text-xs text-white">
+                {currentUser?.email?.charAt(0).toUpperCase() ?? "A"}
               </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-900 dark:text-white">Admin</p>
-                <p className="text-[10px] text-gray-500">Quản trị viên</p>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                  {currentUser?.email?.split("@")[0] ?? "Admin"}
+                </p>
+                <p className="text-[10px] text-gray-500 truncate">
+                  {currentUser?.email ?? "Quản trị viên"}
+                </p>
               </div>
             </div>
             
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl transition text-gray-500 dark:text-gray-400 cursor-pointer"
-              title="Chuyển chế độ sáng/tối"
-            >
-              {theme === "light" ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl transition text-gray-500 dark:text-gray-400 cursor-pointer"
+                title="Chuyển chế độ sáng/tối"
+              >
+                {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </button>
+              {/* Logout */}
+              {onLogout && isSupabaseConfigured && (
+                <button
+                  onClick={onLogout}
+                  className="p-2 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 border border-gray-200 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800/50 rounded-xl transition text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 cursor-pointer"
+                  title="Đăng xuất"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </aside>
@@ -194,22 +239,43 @@ export const Layout: React.FC<LayoutProps> = ({
             </nav>
 
             {/* Footer Drawer */}
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-gray-800 flex items-center justify-center font-semibold text-xs text-indigo-600 dark:text-indigo-400">
-                  AD
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-900 dark:text-white">Admin</p>
-                  <p className="text-[10px] text-gray-500">Quản trị viên</p>
-                </div>
-              </div>
-              <button
-                onClick={toggleTheme}
-                className="p-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl transition text-gray-600 dark:text-gray-400"
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800/50 space-y-3">
+              {/* DB Mode Badge mobile */}
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-semibold ${
+                  isSupabaseConfigured
+                    ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50"
+                    : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50"
+                }`}
               >
-                {theme === "light" ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
-              </button>
+                {isSupabaseConfigured ? (
+                  <Cloud className="h-3.5 w-3.5 shrink-0" />
+                ) : (
+                  <HardDrive className="h-3.5 w-3.5 shrink-0" />
+                )}
+                <span>{isSupabaseConfigured ? "Online · Supabase" : "Offline · Local"}</span>
+                <span className={`ml-auto h-1.5 w-1.5 rounded-full animate-pulse ${
+                  isSupabaseConfigured ? "bg-emerald-500" : "bg-amber-500"
+                }`} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-gray-800 flex items-center justify-center font-semibold text-xs text-indigo-600 dark:text-indigo-400">
+                    AD
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-900 dark:text-white">Admin</p>
+                    <p className="text-[10px] text-gray-500">Quản trị viên</p>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl transition text-gray-600 dark:text-gray-400"
+                >
+                  {theme === "light" ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
