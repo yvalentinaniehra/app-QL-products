@@ -10,9 +10,9 @@ import type {
 } from "../types";
 import { calculateExpiryDate, getExpiryStatus } from "../utils/date";
 
-// Helper để tạo id ngẫu nhiên giống local
+// Helper để tạo id ngẫu nhiên — dùng crypto API an toàn hơn Math.random()
 function generateId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).substring(2, 11)}`;
+  return `${prefix}-${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`;
 }
 
 // ============================================================================
@@ -117,7 +117,7 @@ const mapSubscriptionToDB = (s: any) => {
 // 2. AUTO UPDATE STATUSES (TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI HẾT HẠN TRÊN CLOUD)
 // ============================================================================
 
-async function autoUpdateStatuses(): Promise<void> {
+export async function autoUpdateStatuses(): Promise<void> {
   if (!supabase) return;
   const todayStr = new Date().toISOString().split("T")[0];
   try {
@@ -193,7 +193,6 @@ export const supabaseService = {
   // --- ACCOUNTS SERVICE ---
   getAccounts: async (): Promise<AIAccountWithSlots[]> => {
     if (!supabase) return [];
-    await autoUpdateStatuses();
 
     // Lấy accounts kèm thông tin product
     const { data: accountsData, error: accErr } = await supabase
@@ -325,6 +324,18 @@ export const supabaseService = {
 
   deleteCustomer: async (id: string): Promise<void> => {
     if (!supabase) return;
+
+    // Kiểm tra khách hàng có đăng ký active không — chặn xóa nếu còn
+    const { count, error: countErr } = await supabase
+      .from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("customer_id", id)
+      .eq("status", "active");
+    if (countErr) throw countErr;
+    if (count && count > 0) {
+      throw new Error("Không thể xóa khách hàng đang có đăng ký dịch vụ hoạt động. Vui lòng hủy đăng ký trước.");
+    }
+
     const { error } = await supabase.from("customers").delete().eq("id", id);
     if (error) throw error;
   },
@@ -332,8 +343,6 @@ export const supabaseService = {
   // --- SUBSCRIPTIONS SERVICE ---
   getSubscriptionsWithDetails: async (): Promise<SubscriptionDetail[]> => {
     if (!supabase) return [];
-    await autoUpdateStatuses();
-
     // Lấy subscriptions kèm thông tin liên kết
     const { data, error } = await supabase
       .from("subscriptions")
@@ -549,8 +558,7 @@ export const supabaseService = {
       };
     }
 
-    // Tự động kiểm tra hạn dùng trước khi tính metrics
-    await autoUpdateStatuses();
+    // Tự động kiểm tra hạn dùng trước khi tính metrics (đã chuyển sang refresh())
 
     const todayStr = new Date().toISOString().split("T")[0];
     const warningDateStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];

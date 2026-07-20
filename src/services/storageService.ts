@@ -3,9 +3,9 @@ import { storage, CURRENT_VERSION, DEFAULT_PRODUCTS, DEFAULT_ACCOUNTS, DEFAULT_C
 import { calculateExpiryDate, getExpiryStatus } from "../utils/date";
 import { formatISO } from "date-fns";
 
-// Helper để tạo id ngẫu nhiên
+// Helper để tạo id ngẫu nhiên — dùng crypto API an toàn hơn Math.random()
 function generateId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).substring(2, 11)}`;
+  return `${prefix}-${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`;
 }
 
 // Lấy thời gian ISO hiện tại

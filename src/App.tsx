@@ -9,6 +9,7 @@ import { BackupPage } from "./pages/BackupPage";
 import { LoginPage } from "./pages/LoginPage";
 import { authService, type AuthUser } from "./services/authService";
 import { isSupabaseConfigured } from "./services/supabaseClient";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 function AppContent({ currentUser, onLogout }: { currentUser: AuthUser | null; onLogout: () => void }) {
@@ -116,9 +117,11 @@ function App() {
 
   // App bình thường khi đã xác thực
   return (
-    <StoreProvider>
-      <AppContent currentUser={currentUser} onLogout={handleLogout} />
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <AppContent currentUser={currentUser} onLogout={handleLogout} />
+      </StoreProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -13,7 +13,7 @@ import { initializeStorage, storage } from "../storage/localStorage";
 import type { ToastType } from "../components/UIComponents";
 import { googleDriveService } from "../services/googleDriveService";
 import type { GoogleUser } from "../services/googleDriveService";
-import { supabaseService } from "../services/supabaseService";
+import { supabaseService, autoUpdateStatuses as supabaseAutoUpdate } from "../services/supabaseService";
 import { isSupabaseConfigured, supabase } from "../services/supabaseClient";
 
 interface StoreContextType {
@@ -104,6 +104,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refresh = useCallback(async () => {
     try {
       if (isSupabaseConfigured) {
+        // Chạy auto-update statuses 1 lần duy nhất trước khi load data
+        await supabaseAutoUpdate();
+
         const loadedProducts = await supabaseService.getProducts();
         const loadedAccounts = await supabaseService.getAccounts();
         const loadedCustomers = await supabaseService.getCustomers();
